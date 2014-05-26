@@ -12,9 +12,27 @@ data Operator = Ld | Ldc | Ldf |
 -- A value in the machine
 data Value = OperatorValue Operator |
              NumberValue Int |
-             ListValue [Value] | -- TODO: More SECD-ish list implementation
-             ClosureValue [Value] [[Value]] -- TODO: find something more elegant
+             -- TODO: More SECD-ish list implementation, with cons and nil ?
+             ListValue [Value] |
+             -- TODO: Find something more elegant, as the second element is
+             -- an environment
+             ClosureValue [Value] [[Value]]
            deriving (Show)
+
+class Valuable a where
+  toValue :: a -> Value
+
+instance Valuable Value where
+  toValue = id
+
+instance Valuable Operator where
+  toValue = OperatorValue
+
+instance Valuable Int where
+  toValue = NumberValue
+
+instance (Valuable a) => Valuable [a] where
+  toValue = ListValue . (map toValue)
 
 isTrue :: Value -> Bool
 isTrue (NumberValue 0) = False
@@ -35,21 +53,33 @@ type Environment = [[Value]]
 -- The control contains the running program
 type Control = [Value]
 
+-- Utility operator to add a value to a value stack
+(§) :: (Valuable a) => a -> [Value] -> [Value]
+a § c = (toValue a) : c
+
+infixr §
+
 -- The dump is a temporary push of the other registers
 data Dump = Dump { dumpS :: Stack,
                    dumpE :: Environment,
                    dumpC :: Control }
             deriving (Show)
 
+-- Contains the current state of the virtual machine
 data Registers = Registers { regS :: Stack,
                              regE :: Environment,
                              regC :: Control,
                              regD :: [Dump] }
-                 deriving (Show)
+               deriving (Show)
+
+applyNumBinOperator :: (Int -> Int -> Int) -> Registers -> Registers
+applyNumBinOperator op (Registers ((NumberValue a) : (NumberValue b) : s) e c d) =
+  Registers (op a b § s) e c d
+
+applyNumBinOperator _ _ = error "No matching for call binary operator with register."
 
 -- Applies an operator to the current registers
 applyOperator :: Operator -> Registers -> Registers
-
 applyOperator Ld (Registers
                   s
                   e
@@ -93,17 +123,10 @@ applyOperator Sel (Registers (cond : s) e (ListValue whenTrue : ListValue whenFa
 applyOperator Join (Registers s e _ ((Dump _ _ c') : d)) =
   Registers s e c' d
 
-applyOperator Plus (Registers (NumberValue a : NumberValue b : s) e c d) =
-  Registers (NumberValue (a + b) : s) e c d
-
-applyOperator Minus (Registers (NumberValue a : NumberValue b : s) e c d) =
-  Registers (NumberValue (a - b) : s) e c d
-
-applyOperator Times (Registers (NumberValue a : NumberValue b : s) e c d) =
-  Registers (NumberValue (a * b) : s) e c d
-
-applyOperator Divide (Registers (NumberValue a : NumberValue b : s) e c d) =
-  Registers (NumberValue (quot a b) : s) e c d
+applyOperator Plus r = applyNumBinOperator (+) r
+applyOperator Minus r  = applyNumBinOperator (-) r
+applyOperator Times r = applyNumBinOperator (*) r
+applyOperator Divide r = applyNumBinOperator quot r
 
 applyOperator op reg = error $ "Op : " ++ (show op) ++ ", Register : " ++ (show reg)
 
@@ -125,18 +148,12 @@ runControl c = let (Registers s _ _ _) = runMachine $ Registers [] [] c []
 
 -- Temp test
 runTest :: Maybe Value
-runTest = runControl [(OperatorValue Nil),
-                      (OperatorValue Dum),
-                      (OperatorValue Ldf),
-                      (ListValue [(OperatorValue Ld), (ListValue [(NumberValue 0),
-                                                                  (NumberValue 1)]),
-                                  (OperatorValue Ld), (ListValue [(NumberValue 0),
-                                                                  (NumberValue 0)]),
-                                  (OperatorValue Minus),
-                                  (OperatorValue Rtn)]),
-                      (OperatorValue Nil),
-                      (OperatorValue Cons),
-                      (NumberValue 5),
-                      (OperatorValue Cons),
-                      (NumberValue 7),
-                      (OperatorValue Ap)]
+runTest = let minus = Ld § [0 :: Int, 1 :: Int] §
+                      Ld § [0 :: Int, 0 :: Int] §
+                      Minus § Rtn § []
+          in runControl $
+             Ldf § minus §
+             Nil §
+             Cons § (5 :: Int) §
+             Cons § (7 :: Int) §
+             Ap § []
