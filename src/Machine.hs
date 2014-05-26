@@ -6,7 +6,8 @@ data Operator = Ld | Ldc | Ldf |
                 Ap | Rap | Rtn |
                 Cons | Car | Cdr |
                 Sel | Join |
-                Plus | Minus | Times | Divide
+                Plus | Minus | Times | Divide |
+                Eq | And | Or | Not
               deriving (Show)
 
 -- A value in the machine
@@ -128,6 +129,14 @@ applyOperator Minus r  = applyNumBinOperator (-) r
 applyOperator Times r = applyNumBinOperator (*) r
 applyOperator Divide r = applyNumBinOperator quot r
 
+applyOperator Eq r = applyNumBinOperator (\a b ->  if (a == b) then 1 else 0) r
+applyOperator And (Registers (v1 : v2 : s) e c d) =
+  Registers ((if isTrue v1 && isTrue v2 then 1 :: Int else 0 :: Int) § s) e c d
+applyOperator Or (Registers (v1 : v2 : s) e c d) =
+  Registers ((if isTrue v1 || isTrue v2 then 1 :: Int else 0 :: Int) § s) e c d
+applyOperator Not (Registers (v : s) e c d) =
+  Registers ((if isTrue v then 0 :: Int else 1 :: Int) § s) e c d
+
 applyOperator op reg = error $ "Op : " ++ (show op) ++ ", Register : " ++ (show reg)
 
 -- Running the machine
@@ -147,13 +156,26 @@ runControl c = let (Registers s _ _ _) = runMachine $ Registers [] [] c []
                   else Just $ head s
 
 -- Temp test
-runTest :: Maybe Value
-runTest = let minus = Ld § [0 :: Int, 1 :: Int] §
-                      Ld § [0 :: Int, 0 :: Int] §
-                      Minus § Rtn § []
-          in runControl $
-             Ldf § minus §
-             Nil §
-             Cons § (5 :: Int) §
-             Cons § (7 :: Int) §
-             Ap § []
+runMinusTest :: Maybe Value
+runMinusTest = let minus = Ld § [0 :: Int, 1 :: Int] §
+                           Ld § [0 :: Int, 0 :: Int] §
+                           Minus § Rtn § []
+               in runControl $
+                  Ldf § minus §
+                  Nil §
+                  Cons § (5 :: Int) §
+                  Cons § (7 :: Int) §
+                  Ap § []
+
+runCondTest :: Maybe Value
+runCondTest = let whenTrue = Ldc § (1 :: Int) § Join § []
+              in let whenFalse = Ldc § (2 :: Int) § Join § []
+                 in runControl $
+                    Ldc § (1 :: Int) §
+                    Ldc § (2 :: Int) §
+                    Plus §
+                    Ldc § (3 :: Int) §
+                    Eq § Not §
+                    Sel §
+                    whenTrue §
+                    whenFalse § []
