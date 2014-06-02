@@ -8,7 +8,7 @@ data Operator = Ld | Ldc | Ldf |
                 Sel | Join |
                 Plus | Minus | Times | Divide |
                 Eq | And | Or | Not
-              deriving (Show)
+              deriving (Show, Eq)
 
 -- A value in the machine
 data Value = OperatorValue Operator |
