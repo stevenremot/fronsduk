@@ -1,6 +1,5 @@
 module Bytecode where
 
-import qualified Data.ByteString.Lazy as BL
 import Data.Binary.Put
 import Data.Binary.Get
 import Data.Maybe
@@ -129,9 +128,3 @@ deserializeControl = do
     step <- deserializeControlStep
     rest <- deserializeControl
     return $ step ++ rest
-
-main :: IO ()
--- main = BL.putStr $ runPut $ serializeControl facTest
-main = do
-  input <- BL.getContents
-  print $ runControl $ runGet deserializeControl input
