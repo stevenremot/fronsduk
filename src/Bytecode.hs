@@ -2,7 +2,9 @@ module Bytecode where
 
 import qualified Data.ByteString.Lazy as BL
 import Data.Binary.Put
+import Data.Binary.Get
 import Data.Maybe
+import Data.List
 
 import Machine
 
@@ -33,6 +35,13 @@ opCodes =
 getOpCode :: Operator -> Integer
 getOpCode = fromJust . (flip lookup opCodes)
 
+getOpFromCode :: Integer -> Operator
+getOpFromCode n = fst $ fromJust $ (find (\(_, n') -> n' == n) opCodes)
+
+--------------------------------------------------
+-- Serilization
+--------------------------------------------------
+
 serializeValue :: Value -> Put
 serializeValue (NumberValue i) = do
   putWord8 $ fromIntegral i
@@ -52,5 +61,77 @@ serializeControl (val : vs) =
   (serializeValue val)
   vs
 
+--------------------------------------------------
+-- Deserialization
+--------------------------------------------------
+
+
+deserializeOperator :: Get (Operator)
+deserializeOperator = do
+  w <- getWord8
+  return $ getOpFromCode $ fromIntegral w
+
+deserializeNumber :: Get (Int)
+deserializeNumber = do
+  w <- getWord8
+  return $ fromIntegral w
+
+deserializeControlStep :: Get (Control)
+deserializeControlStep = do
+  operator <- deserializeOperator
+  chain <- handleOperator operator
+  return $ OperatorValue operator : chain
+
+deserializeLimitedControlItem :: Int -> Int -> Get (Control)
+deserializeLimitedControlItem n l
+  | n == l = return []
+  | otherwise = do
+    step <- deserializeControlStep
+    rest <- deserializeLimitedControlItem (n + (fromIntegral $ length step)) l
+    return $ step ++ rest
+
+deserializeLimitedControl :: Get (Control)
+deserializeLimitedControl = do
+  controlLength <- deserializeNumber
+  chain <- deserializeLimitedControlItem 0 controlLength
+  return [ListValue chain]
+
+deserializePair :: Get (Value)
+deserializePair = do
+  controlLength <- deserializeNumber
+  if controlLength /= 2
+    then fail $ "Expecting a pair, but got a list of length " ++ show controlLength
+    else do
+    n1 <- deserializeNumber
+    n2 <- deserializeNumber
+    return $ ListValue [NumberValue n1, NumberValue n2]
+
+encloseInList :: a -> Get [a]
+encloseInList a = return [a]
+
+handleOperator :: Operator -> Get (Control)
+handleOperator Ld = deserializePair >>= encloseInList
+handleOperator Ldc = deserializeNumber >>= (\n -> return [NumberValue n])
+handleOperator Ldf = deserializeLimitedControl
+handleOperator Sel = do
+  true <- deserializeLimitedControl
+  false <- deserializeLimitedControl
+  return $ true ++ false
+handleOperator _ = return []
+
+
+deserializeControl :: Get (Control)
+deserializeControl = do
+  empty <- isEmpty
+  if empty
+    then return []
+    else do
+    step <- deserializeControlStep
+    rest <- deserializeControl
+    return $ step ++ rest
+
 main :: IO ()
-main = BL.putStr $ runPut $ serializeControl facTest
+-- main = BL.putStr $ runPut $ serializeControl facTest
+main = do
+  input <- BL.getContents
+  print $ runControl $ runGet deserializeControl input
