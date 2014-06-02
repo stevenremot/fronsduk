@@ -18,7 +18,13 @@ data Value = OperatorValue Operator |
              -- TODO: Find something more elegant, as the second element is
              -- an environment
              ClosureValue [Value] [[Value]]
-           deriving (Show)
+
+instance Show Value where
+  show (OperatorValue op) = show op
+  show (NumberValue i) = show i
+  show (ListValue l) = show l
+  -- Do not show environment to avoid recursion...
+  show (ClosureValue f _) = "(closure " ++ show f ++ ")"
 
 class Valuable a where
   toValue :: a -> Value
@@ -71,13 +77,27 @@ data Registers = Registers { regS :: Stack,
                              regE :: Environment,
                              regC :: Control,
                              regD :: [Dump] }
-               deriving (Show)
+
+instance Show Registers where
+  show (Registers s e c d) = "S : " ++ show s ++
+                             "\nE : " ++ show e ++
+                             "\nC : " ++ show c ++
+                             "\nD : " ++ show d
+
+-- Utility to create a recursive environment for recursivity
+recursiveEnv :: [Value] -> [Value]
+recursiveEnv env = map (\(ClosureValue f (_ : env')) -> ClosureValue f $
+                                                      recursiveEnv env : env') env
 
 applyNumBinOperator :: (Int -> Int -> Int) -> Registers -> Registers
 applyNumBinOperator op (Registers ((NumberValue a) : (NumberValue b) : s) e c d) =
   Registers (op a b § s) e c d
 
 applyNumBinOperator _ _ = error "No matching for call binary operator with register."
+
+-- Recursive operators
+replaceDummy :: [Value] -> [Value] -> [Value]
+replaceDummy fs e = map (\(ClosureValue f (_ : e')) -> ClosureValue f (e : e')) fs
 
 -- Applies an operator to the current registers
 applyOperator :: Operator -> Registers -> Registers
@@ -100,15 +120,16 @@ applyOperator Nil (Registers s e c d) =
 applyOperator Dum (Registers s e c d) =
   Registers s ([] : e) c d
 
-applyOperator Ap (Registers ((ListValue args) : (ClosureValue f e') : s) e c d) =
+applyOperator Ap (Registers ((ClosureValue f e') : (ListValue args) : s) e c d) =
   Registers [] (args : e') f (Dump s e c : d)
 
-applyOperator Rap _  = error "Rap not implemented yet."
+applyOperator Rap (Registers ((ClosureValue f (_ : e')) : (ListValue args) : s) (_ : e) c d) =
+  (Registers [] ((replaceDummy args (recursiveEnv args)) : e') f ((Dump s e c) : d))
 
 applyOperator Rtn (Registers (x : _) _ _ ((Dump s' e' c') : d)) =
   Registers (x : s') e' c' d
 
-applyOperator Cons (Registers (ListValue l : s) e (v : c) d) =
+applyOperator Cons (Registers (v : ListValue l : s) e c d) =
   Registers (ListValue (v : l) : s) e c d
 
 applyOperator Car (Registers (ListValue (x : _) : s) e c d) =
@@ -139,14 +160,20 @@ applyOperator Not (Registers (v : s) e c d) =
 
 applyOperator op reg = error $ "Op : " ++ (show op) ++ ", Register : " ++ (show reg)
 
--- Running the machine
+-- Do a step
+doStep :: Registers -> Registers
+doStep (Registers s e [] []) = Registers s e [] []
+doStep (Registers _ _ [] ((Dump s' e' c') : d)) =
+  Registers s' e' c' d
+doStep (Registers s e (OperatorValue op : c) d) =
+  applyOperator op (Registers s e c d)
+doStep r = error $ "Non operator : " ++ show r
+
+
+-- Running the whole machine
 runMachine :: Registers -> Registers
 runMachine (Registers s e [] []) = Registers s e [] []
-runMachine (Registers _ _ [] ((Dump s' e' c') : d)) =
-  runMachine $ Registers s' e' c' d
-runMachine (Registers s e (OperatorValue op : c) d) =
-  runMachine $ applyOperator op (Registers s e c d)
-
+runMachine r = runMachine $ doStep r
 
 -- Running the code
 runControl :: Control -> Maybe Value
@@ -161,10 +188,10 @@ runMinusTest = let minus = Ld § [0 :: Int, 1 :: Int] §
                            Ld § [0 :: Int, 0 :: Int] §
                            Minus § Rtn § []
                in runControl $
-                  Ldf § minus §
                   Nil §
-                  Cons § (5 :: Int) §
-                  Cons § (7 :: Int) §
+                  Ldc § (5 :: Int) § Cons §
+                  Ldc § (7 :: Int) § Cons §
+                  Ldf § minus §
                   Ap § []
 
 runCondTest :: Maybe Value
@@ -179,3 +206,35 @@ runCondTest = let whenTrue = Ldc § (1 :: Int) § Join § []
                     Sel §
                     whenTrue §
                     whenFalse § []
+
+recTest :: Control
+recTest = let even = Ld § [0 :: Int, 0 :: Int] § Sel §
+                     (Nil § Ldc § (1 :: Int) § Ld § [0 :: Int, 0 :: Int] § Minus § Cons §
+                      Ld § [1 :: Int, 0 :: Int] § Ap § Not § Join § []) §
+                     (Ldc § (1 :: Int) § Join § []) §
+                     Rtn § []
+          in let odd = Ld § [0 :: Int, 0 :: Int] § Sel §
+                       (Nil § Ldc § (1 :: Int) § Ld § [0 :: Int, 0 :: Int] § Minus § Cons §
+                        Ld § [1 :: Int, 1 :: Int] § Ap § Not § Join § []) §
+                       (Ldc § (0 :: Int) § Join § []) §
+                       Rtn § []
+             in Dum § Nil §
+                Ldf § even §
+                Cons §
+                Ldf § odd §
+                Cons §
+                Ldf § (Nil § Ldc § (6 :: Int) § Cons § Ld § [0 :: Int, 0 :: Int] § Ap § Rtn § []) § Rap § []
+
+runRecTest :: Maybe Value
+runRecTest = runControl recTest
+
+facTest :: Control
+facTest = let fac = Ld § [0 :: Int, 0 :: Int] § Sel §
+                    (Nil § Ldc § (1 :: Int) § Ld § [0 :: Int, 0 :: Int] § Minus § Cons §
+                     Ld § [1 :: Int, 0 :: Int] § Ap §
+                     Ld § [0 :: Int, 0 :: Int] § Times § Join § []) §
+                    (Ldc § (1 :: Int) § Join § []) §
+                    Rtn § []
+          in Dum § Nil §
+             Ldf § fac § Cons §
+             Ldf § (Nil § Ldc § (5 :: Int) § Cons § Ld § [0 :: Int, 0 :: Int] § Ap § Rtn § []) § Rap § []
