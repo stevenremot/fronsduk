@@ -29,3 +29,12 @@ executable fronsduk-assemble
     parsec,
     binary,
     bytestring
+
+executable fronsduk-disassemble
+  hs-source-dirs: src
+  main-is: Disassembler.hs
+  ghc-options: -main-is Disassembler
+  build-depends:
+    base == 4.6.*,
+    binary,
+    bytestring
