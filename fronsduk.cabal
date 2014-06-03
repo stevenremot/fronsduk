@@ -2,7 +2,7 @@ name:                fronsduk
 version:             0.1.0.0
 -- synopsis:
 -- description:
--- license:
+license:             GPL v3
 license-file:        LICENSE
 author:              Steven Rémot
 maintainer:          steven.remot@telecom-paristech.org
