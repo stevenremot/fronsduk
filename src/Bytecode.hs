@@ -43,13 +43,13 @@ getOpFromCode n = fst $ fromJust $ (find (\(_, n') -> n' == n) opCodes)
 
 serializeValue :: Value -> Put
 serializeValue (NumberValue i) = do
-  putWord8 $ fromIntegral i
+  putWord32be $ fromIntegral i
 serializeValue (OperatorValue op) = do
   putWord8 $ fromIntegral $ getOpCode op
 serializeValue (ListValue l) =
   foldl
   (\m v -> m >>= (\_ -> serializeValue v))
-  (putWord8 $ fromIntegral $ length l)
+  (putWord32be $ fromIntegral $ length l)
   l
 serializeValue v = error $ "Cannot convert " ++ show v ++ " to bytecode."
 
@@ -72,7 +72,7 @@ deserializeOperator = do
 
 deserializeNumber :: Get (Int)
 deserializeNumber = do
-  w <- getWord8
+  w <- getWord32be
   return $ fromIntegral w
 
 deserializeControlStep :: Get (Control)
