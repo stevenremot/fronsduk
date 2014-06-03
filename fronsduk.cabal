@@ -12,7 +12,20 @@ build-type:          Simple
 cabal-version:       >=1.8
 
 executable fronsduk
-  -- main-is:
-  -- other-modules:
-  build-depends:       base ==4.6.*, parsec
   hs-source-dirs:      src
+  main-is: Interpreter.hs
+  ghc-options: -main-is Interpreter
+  build-depends:
+    base ==4.6.*,
+    binary,
+    bytestring
+
+executable fronsduk-assemble
+  hs-source-dirs: src
+  main-is: Assembler.hs
+  ghc-options: -main-is Assembler
+  build-depends:
+    base == 4.6.*,
+    parsec,
+    binary,
+    bytestring
