@@ -46,6 +46,7 @@ getOperator "And" = And
 getOperator "Or" = Or
 getOperator "Not" = Not
 getOperator "Print" = Print
+getOperator "Read" = Read
 
 expr :: Parser Value
 expr = whiteSpace >>=

@@ -30,7 +30,8 @@ opCodes =
    (And, 19),
    (Or, 20),
    (Not, 21),
-   (Print, 22)]
+   (Print, 22),
+   (Read, 23)]
 
 getOpCode :: Operator -> Integer
 getOpCode = fromJust . (flip lookup opCodes)

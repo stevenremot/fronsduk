@@ -10,7 +10,7 @@ data Operator = Ld | Ldc | Ldf |
                 Sel | Join |
                 Plus | Minus | Times | Divide |
                 Eq | And | Or | Not |
-                Print
+                Print | Read
               deriving (Show, Eq)
 
 -- A value in the machine
@@ -164,6 +164,10 @@ applyOperator Not (Registers (v : s) e c d) =
 applyOperator Print (Registers ((ListValue v) : s) e c d) = do
   putStr $ map (\(NumberValue i) -> chr i) v
   return $ Registers (ListValue v : s) e c d
+
+applyOperator Read (Registers s e c d) = do
+  ch <- getChar
+  return $ Registers (ord ch § s) e c d
 
 applyOperator op reg = error $ "Op : " ++ (show op) ++ ", Register : " ++ (show reg)
 
