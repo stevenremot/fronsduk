@@ -1,5 +1,7 @@
 module Machine where
 
+import Data.Char
+
 -- Machine base operators
 data Operator = Ld | Ldc | Ldf |
                 Nil | Dum |
@@ -7,7 +9,8 @@ data Operator = Ld | Ldc | Ldf |
                 Cons | Car | Cdr |
                 Sel | Join |
                 Plus | Minus | Times | Divide |
-                Eq | And | Or | Not
+                Eq | And | Or | Not |
+                Print
               deriving (Show, Eq)
 
 -- A value in the machine
@@ -89,9 +92,9 @@ recursiveEnv :: [Value] -> [Value]
 recursiveEnv env = map (\(ClosureValue f (_ : env')) -> ClosureValue f $
                                                       recursiveEnv env : env') env
 
-applyNumBinOperator :: (Int -> Int -> Int) -> Registers -> Registers
+applyNumBinOperator :: (Int -> Int -> Int) -> Registers -> IO Registers
 applyNumBinOperator op (Registers ((NumberValue a) : (NumberValue b) : s) e c d) =
-  Registers (op a b § s) e c d
+  return  $ Registers (op a b § s) e c d
 
 applyNumBinOperator _ _ = error "No matching for call binary operator with register."
 
@@ -100,50 +103,50 @@ replaceDummy :: [Value] -> [Value] -> [Value]
 replaceDummy fs e = map (\(ClosureValue f (_ : e')) -> ClosureValue f (e : e')) fs
 
 -- Applies an operator to the current registers
-applyOperator :: Operator -> Registers -> Registers
+applyOperator :: Operator -> Registers -> IO Registers
 applyOperator Ld (Registers
                   s
                   e
                   ((ListValue ((NumberValue i) : (NumberValue j) : [])) : c)
                   d) =
-  Registers ((e !! i) !! j : s) e c d
+  return $ Registers ((e !! i) !! j : s) e c d
 
 applyOperator Ldc (Registers s e (v : c) d) =
-  Registers (v : s) e c d
+  return $ Registers (v : s) e c d
 
 applyOperator Ldf (Registers s e ((ListValue f) : c) d) =
-  Registers ((ClosureValue f e) : s) e c d
+  return  $ Registers ((ClosureValue f e) : s) e c d
 
 applyOperator Nil (Registers s e c d) =
-  Registers (ListValue [] : s) e c d
+  return  $ Registers (ListValue [] : s) e c d
 
 applyOperator Dum (Registers s e c d) =
-  Registers s ([] : e) c d
+  return  $ Registers s ([] : e) c d
 
 applyOperator Ap (Registers ((ClosureValue f e') : (ListValue args) : s) e c d) =
-  Registers [] (args : e') f (Dump s e c : d)
+  return  $ Registers [] (args : e') f (Dump s e c : d)
 
 applyOperator Rap (Registers ((ClosureValue f (_ : e')) : (ListValue args) : s) (_ : e) c d) =
-  (Registers [] ((replaceDummy args (recursiveEnv args)) : e') f ((Dump s e c) : d))
+  return  $ (Registers [] ((replaceDummy args (recursiveEnv args)) : e') f ((Dump s e c) : d))
 
 applyOperator Rtn (Registers (x : _) _ _ ((Dump s' e' c') : d)) =
-  Registers (x : s') e' c' d
+  return  $ Registers (x : s') e' c' d
 
 applyOperator Cons (Registers (v : ListValue l : s) e c d) =
-  Registers (ListValue (v : l) : s) e c d
+  return  $ Registers (ListValue (v : l) : s) e c d
 
 applyOperator Car (Registers (ListValue (x : _) : s) e c d) =
-  Registers (x : s) e c d
+  return  $ Registers (x : s) e c d
 
 applyOperator Cdr (Registers (ListValue (_ : xs) : s) e c d) =
-  Registers (ListValue xs : s) e c d
+  return  $ Registers (ListValue xs : s) e c d
 
 applyOperator Sel (Registers (cond : s) e (ListValue whenTrue : ListValue whenFalse : c) d)
-  | isTrue cond = Registers s e whenTrue ((Dump s e c) : d)
-  | otherwise = Registers s e whenFalse ((Dump s e c) : d)
+  | isTrue cond = return  $ Registers s e whenTrue ((Dump s e c) : d)
+  | otherwise = return  $ Registers s e whenFalse ((Dump s e c) : d)
 
 applyOperator Join (Registers s e _ ((Dump _ _ c') : d)) =
-  Registers s e c' d
+  return  $ Registers s e c' d
 
 applyOperator Plus r = applyNumBinOperator (+) r
 applyOperator Minus r  = applyNumBinOperator (-) r
@@ -152,32 +155,38 @@ applyOperator Divide r = applyNumBinOperator quot r
 
 applyOperator Eq r = applyNumBinOperator (\a b ->  if (a == b) then 1 else 0) r
 applyOperator And (Registers (v1 : v2 : s) e c d) =
-  Registers ((if isTrue v1 && isTrue v2 then 1 :: Int else 0 :: Int) § s) e c d
+  return  $ Registers ((if isTrue v1 && isTrue v2 then 1 :: Int else 0 :: Int) § s) e c d
 applyOperator Or (Registers (v1 : v2 : s) e c d) =
-  Registers ((if isTrue v1 || isTrue v2 then 1 :: Int else 0 :: Int) § s) e c d
+  return  $ Registers ((if isTrue v1 || isTrue v2 then 1 :: Int else 0 :: Int) § s) e c d
 applyOperator Not (Registers (v : s) e c d) =
-  Registers ((if isTrue v then 0 :: Int else 1 :: Int) § s) e c d
+  return  $ Registers ((if isTrue v then 0 :: Int else 1 :: Int) § s) e c d
+
+applyOperator Print (Registers ((ListValue v) : s) e c d) = do
+  putStr $ map (\(NumberValue i) -> chr i) v
+  return $ Registers (ListValue v : s) e c d
 
 applyOperator op reg = error $ "Op : " ++ (show op) ++ ", Register : " ++ (show reg)
 
 -- Do a step
-doStep :: Registers -> Registers
-doStep (Registers s e [] []) = Registers s e [] []
+doStep :: Registers -> IO Registers
+doStep (Registers s e [] []) = return  $ Registers s e [] []
 doStep (Registers _ _ [] ((Dump s' e' c') : d)) =
-  Registers s' e' c' d
+  return  $ Registers s' e' c' d
 doStep (Registers s e (OperatorValue op : c) d) =
   applyOperator op (Registers s e c d)
 doStep r = error $ "Non operator : " ++ show r
 
 
 -- Running the whole machine
-runMachine :: Registers -> Registers
-runMachine (Registers s e [] []) = Registers s e [] []
-runMachine r = runMachine $ doStep r
+runMachine :: Registers -> IO Registers
+runMachine (Registers s e [] []) = return  $ Registers s e [] []
+runMachine r = (doStep r) >>= runMachine
 
 -- Running the code
-runControl :: Control -> Maybe Value
-runControl c = let (Registers s _ _ _) = runMachine $ Registers [] [] c []
-               in if null s
-                  then Nothing
-                  else Just $ head s
+runControl :: Control -> IO (Maybe Value)
+runControl c = do
+  r <- runMachine $ Registers [] [] c []
+  let (Registers s _ _ _) = r
+    in if null s
+       then return Nothing
+       else return $ Just $ head s
