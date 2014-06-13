@@ -1,5 +1,7 @@
 ;;; fronsduk-mode.el --- Major mode for editing fronsduk assembler files
 
+;;; Version: 0.1
+
 ;;; License:
 
 ;; This file is part of Fronsduk.
@@ -33,12 +35,12 @@
     map)
   "Keymap for `fronsduk-mode'.")
 
-;;;###autoload
 (defconst fronsduk-font-lock-keywords-1
   (cons "\\<\\(?:A\\(?:nd' 'Or\\|p\\)\\|C\\(?:ar\\|dr\\|ons\\)\\|D\\(?:ivide\\|um\\)\\|Eq\\|Join\\|Ld[cf]?\\|Minus\\|N\\(?:il\\|ot\\)\\|P\\(?:lus\\|rint\\)\\|R\\(?:ap\\|ead\\|tn\\)\\|Sel\\|Times\\)\\>"
         '(0 font-lock-builtin-face))
   "Keywords defined in fronsduk assembler.")
 
+;;;###autoload
 (define-derived-mode fronsduk-mode text-mode "fronsduk"
   "Major mode for editing fronsduk assembler files.
 
