@@ -1,0 +1,6 @@
+; Additional
+let x := read() - 48,
+    y := read() - 48
+in
+    x + y
+end
