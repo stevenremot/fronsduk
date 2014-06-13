@@ -1,13 +1,13 @@
 ; Recursively telling if a number is even or not
 
-fn even?(n)
+fn isEven(n)
    if n = 0
    then 1
    else odd(n - 1)
    end
 end
 
-fn odd?(n)
+fn isOdd(n)
    if n = 0
    then 0
    else even(n - 1)

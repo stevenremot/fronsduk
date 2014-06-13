@@ -2,7 +2,7 @@ name:                fronsduk
 version:             0.1.0.0
 -- synopsis:
 -- description:
-license:             GPL v3
+license:             GPL
 license-file:        LICENSE
 author:              Steven Rémot
 maintainer:          steven.remot@telecom-paristech.org
@@ -36,5 +36,15 @@ executable fronsduk-disassemble
   ghc-options: -main-is Disassembler
   build-depends:
     base == 4.6.*,
+    binary,
+    bytestring
+
+executable qzitchec
+  hs-source-dirs: src
+  main-is: Qzitchec.hs
+  ghc-options: -main-is Qzitchec
+  build-depends:
+    base == 4.6.*,
+    parsec,
     binary,
     bytestring
