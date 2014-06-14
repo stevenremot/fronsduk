@@ -50,6 +50,7 @@ getPrimitiveCode "/" = binaryOperator Divide
 getPrimitiveCode "=" = binaryOperator Eq
 getPrimitiveCode "&&" = binaryOperator And
 getPrimitiveCode "||" = binaryOperator Or
+getPrimitiveCode "!" = Ld § [0 :: Int, 0 :: Int] § Not § Rtn § []
 
 getPrimitiveCode i = error $ "No binding for identifier " ++ i
 
@@ -159,7 +160,12 @@ comparison = whiteSpace >>=
 
 expr :: Parser SyntaxElement
 expr = whiteSpace >>=
-       (\_ -> try (do { s1 <- comparison
+       (\_ -> do { string "!"
+                 ; s <- expr
+                 ; return $ FuncCall (Identifier "!") [s]
+                 }
+              <|>
+              try (do { s1 <- comparison
                      ; whiteSpace
                      ; op <- string "&&" <|> string "||"
                      ; whiteSpace
