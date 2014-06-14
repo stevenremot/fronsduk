@@ -2,6 +2,9 @@
 
 A SECD machine for a school project.
 
+It provides a basic SECD machine, and a language that can be compiled
+to the machine's bytecode : *Qzitche*.
+
 ##Installation##
 
 You can install it as a standard cabal project.
@@ -12,8 +15,9 @@ The project has 3 programs:
 - `fronsduk`: the bytecode interpreter
 - `fronsduk-assemble`: the assembler to bytecode compiler
 - `fronsduk-disassemble`: the bytecode disassembler
+- `qzitchec`: the qzitche to bytecode compiler
 
-###Compile###
+###Compile assembler###
 
 The `fronsduk-assemble` program takes an assembler program as input,
 and outputs the bytecode. The easiest usage, in console, is:
@@ -38,10 +42,17 @@ or
 The program `fronsduk-disassemble` does the reciprocal of `fronsduk-assemble`,
 with a similar interface.
 
+###Compile Qzitche code###
+
+The program `qzitchec` takes a qzitche program as input, and outputs the
+resulting bytecode.
+
+To see what qzitche looks like, see the examples in the `qzitche` directory.
+
 ###Emacs support###
 
-A major mode for editing files in fronsduk assembler is defined in
-`extra/emacs/fronsduk-mode.el`.
+Major modes for editing assembler and qzitche programs can be found in the
+directory `extra/emacs`. They just implement syntax coloration.
 
 ###License###
 
