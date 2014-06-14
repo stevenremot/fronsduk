@@ -48,7 +48,7 @@ getPrimitiveCode "-" = binaryOperator Minus
 getPrimitiveCode "*" = binaryOperator Times
 getPrimitiveCode "/" = binaryOperator Divide
 
-getPrimitiveCode _ = []
+getPrimitiveCode i = error $ "No binding for identifier " ++ i
 
 lexer :: P.TokenParser ()
 lexer = P.makeTokenParser
@@ -68,6 +68,31 @@ natural = P.natural lexer
 funcArgs :: Parser [SyntaxElement]
 funcArgs = commaSep expr
 
+letBinding :: Parser (String, SyntaxElement)
+letBinding = whiteSpace >>=
+             (\_ -> do{ s <- identifier
+                      ; whiteSpace
+                      ; string ":="
+                      ; whiteSpace
+                      ; e <- expr
+                      ; whiteSpace
+                      ; return $ (s, e)
+                      })
+
+letForm :: Parser SyntaxElement
+letForm = do{ whiteSpace
+            ; string "let"
+            ; whiteSpace
+            ; varBindings <- commaSep1 letBinding
+            ; whiteSpace
+            ; string "in"
+            ; body <- program
+            ; whiteSpace
+            ; string "end"
+            ; whiteSpace
+            ; return $ LetClause varBindings body
+            }
+
 unit :: Parser SyntaxElement
 unit = whiteSpace >>=
        (\_ ->do{ s <- stringLiteral
@@ -77,6 +102,10 @@ unit = whiteSpace >>=
              do{ i <- natural
                ; return $ NumberElement $ fromInteger i
                }
+             <|>
+             try (do{ l <- letForm
+                    ; return l
+                    })
              <|>
              try (do{ i <- identifier
                    ; args <- parens funcArgs
@@ -121,7 +150,9 @@ program = many1 expr
 type Bindings = (Map String [(Int, Int)])
 
 data CompilationState = CompilationState{ bindings :: Bindings,
-                                          depth :: Integer }
+                                          depth :: Int }
+
+emptyState = CompilationState empty 0
 
 putBinding :: CompilationState -> String -> (Int, Int) -> CompilationState
 putBinding cs i pos =
@@ -149,7 +180,12 @@ class Compilable a where
   compileToByteCode :: a -> CompilationUnit
 
 instance Compilable SyntaxElement where
-  compileToByteCode (Identifier s) = return $ getPrimitiveCode s
+  compileToByteCode (Identifier s) = do
+    state <- MS.get
+    case getBinding state s of
+      Nothing -> return $ getPrimitiveCode s
+      Just (row, col) -> return $ Ld § [depth state - row, col] § []
+
   compileToByteCode (CharString s) = return $ Nil §
                                      (concat $
                                       map (\c -> Ldc § ord c § Cons § []) $
@@ -161,6 +197,33 @@ instance Compilable SyntaxElement where
       (Ldf § compiledFunc § []) ++ (Ap § [])
 
   compileToByteCode (NumberElement i) = return $ Ldc § i § []
+  compileToByteCode (LetClause varBindings body) =
+    let names = map fst varBindings
+    in do
+      state <- MS.get
+      compiledBindings <- compileBindings varBindings 0
+      newState <- registerBindings names 0
+      MS.put newState
+      compiledBody <- compileToByteCode body
+      MS.put state
+      return $ compiledBindings ++ (Ldf § (compiledBody ++ (Rtn § [])) § Ap § [])
+
+registerBindings :: [String] -> Int -> MS.State CompilationState CompilationState
+registerBindings [] _ = MS.get >>= return.incDepth >>= return
+registerBindings (ident : idents) pos = do
+  state <- registerBindings idents $ pos + 1
+  return $ putBinding state ident (depth state, pos)
+
+compileBindings :: [(String, SyntaxElement)] -> Int -> CompilationUnit
+compileBindings [] _ = return $ Nil § []
+compileBindings (bdg : bdgs) pos =
+  let (identifier, value) = bdg
+  in do
+    state <- MS.get
+    MS.put $ putBinding state identifier (depth state + 1, pos)
+    compiledValue <- compileToByteCode value
+    compiledBindings <- compileBindings bdgs (pos + 1)
+    return $ compiledBindings ++ (compiledValue ++ (Cons § []))
 
 compileArgs :: [SyntaxElement] -> CompilationUnit
 compileArgs [] = return []
