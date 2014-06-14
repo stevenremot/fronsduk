@@ -48,6 +48,8 @@ getPrimitiveCode "-" = binaryOperator Minus
 getPrimitiveCode "*" = binaryOperator Times
 getPrimitiveCode "/" = binaryOperator Divide
 getPrimitiveCode "=" = binaryOperator Eq
+getPrimitiveCode "&&" = binaryOperator And
+getPrimitiveCode "||" = binaryOperator Or
 
 getPrimitiveCode i = error $ "No binding for identifier " ++ i
 
@@ -143,18 +145,30 @@ addition = whiteSpace >>=
                           })
                   <|> term)
 
+
+comparison :: Parser SyntaxElement
+comparison = whiteSpace >>=
+           (\_ -> try (do { s1 <- addition
+                          ; whiteSpace
+                          ; op <- string "="
+                          ; whiteSpace
+                          ; s2 <- comparison
+                          ; return $ FuncCall (Identifier op) [s1, s2]
+                          })
+                  <|> addition)
+
 expr :: Parser SyntaxElement
 expr = whiteSpace >>=
-       (\_ -> try (do { s1 <- addition
+       (\_ -> try (do { s1 <- comparison
                      ; whiteSpace
-                     ; op <- string "="
+                     ; op <- string "&&" <|> string "||"
                      ; whiteSpace
                      ; s2 <- expr
                      ; return $ FuncCall (Identifier op) [s1, s2]
                      })
               <|>
               try (parens expr)
-              <|> addition)
+              <|> comparison)
        >>= (\v -> whiteSpace >>= (\_ -> return v))
 
 program :: Parser [SyntaxElement]
