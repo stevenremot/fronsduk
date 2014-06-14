@@ -140,6 +140,8 @@ expr = whiteSpace >>=
                      ; s2 <- expr
                      ; return $ FuncCall (Identifier op) [s1, s2]
                      })
+              <|>
+              try (parens expr)
               <|> term)
        >>= (\v -> whiteSpace >>= (\_ -> return v))
 
