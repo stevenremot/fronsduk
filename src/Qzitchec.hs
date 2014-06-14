@@ -41,7 +41,7 @@ data SyntaxElement = Identifier String |
                    deriving(Show)
 
 binaryOperator :: Operator -> Control
-binaryOperator op = Ldf § (Ld § [ 0 :: Int, 0 :: Int] § Ld § [0 :: Int, 1 :: Int] § op § Rtn § []) § []
+binaryOperator op = Ldf § (Ld § [ 0 :: Int, 1 :: Int] § Ld § [0 :: Int, 0 :: Int] § op § Rtn § []) § []
 
 getPrimitiveCode :: String -> Control
 getPrimitiveCode "print" = Ldf § (Ld § [0 :: Int, 0 :: Int] § Print § Rtn § []) § []
@@ -273,7 +273,7 @@ instance Compilable SyntaxElement where
   compileToByteCode (FuncCall i args) = do
     compiledArgs <- compileArgs args
     compiledFunc <- compileToByteCode i
-    return $ (Nil § compiledArgs) ++
+    return $ compiledArgs ++
       compiledFunc ++ (Ap § [])
 
   compileToByteCode (NumberElement i) = return $ Ldc § i § []
@@ -323,11 +323,11 @@ compileBindings (bdg : bdgs) pos =
     return $ compiledBindings ++ (compiledValue ++ (Cons § []))
 
 compileArgs :: [SyntaxElement] -> CompilationUnit
-compileArgs [] = return []
+compileArgs [] = return $ Nil § []
 compileArgs (arg : args) = do
   headArg <- compileToByteCode arg
   tailArgs <- compileArgs args
-  return $ headArg ++ (Cons § []) ++ tailArgs
+  return $ tailArgs ++ (headArg ++ (Cons § []))
 
 compileFunc :: [String] -> [SyntaxElement] -> CompilationUnit
 compileFunc args body = do
