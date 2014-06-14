@@ -25,7 +25,7 @@ import Text.ParserCombinators.Parsec.Language (emptyDef)
 import qualified Data.ByteString.Lazy as BL
 import Data.Binary.Put
 import Data.Char
-import Data.Maybe
+import Data.Maybe()
 import Data.List
 import Data.Map (Map, insertWith, findWithDefault, empty)
 import qualified Control.Monad.State as MS
@@ -185,15 +185,15 @@ logicalOp = whiteSpace >>=
 
 expr :: Parser SyntaxElement
 expr = whiteSpace >>=
-       (\_ -> do { string "if"
-                 ; condition <- logicalOp
-                 ; string "then"
-                 ; ifTrue <- program
-                 ; string "else"
-                 ; ifFalse <- program
-                 ; string "end"
-                 ; return $ Condition condition ifTrue ifFalse
-                 }
+       (\_ -> try (do { string "if"
+                      ; condition <- logicalOp
+                      ; string "then"
+                      ; ifTrue <- program
+                      ; string "else"
+                      ; ifFalse <- program
+                      ; string "end"
+                      ; return $ Condition condition ifTrue ifFalse
+                      })
               <|>
               try (do { string "fn"
                       ; whiteSpace
@@ -249,9 +249,6 @@ popBinding cs i =
 incDepth :: CompilationState -> CompilationState
 incDepth cs = CompilationState (bindings cs) $ depth cs + 1
 
-decDepth :: CompilationState -> CompilationState
-decDepth cs = CompilationState (bindings cs) $ max 0 $ depth cs - 1
-
 type CompilationUnit = MS.State CompilationState Control
 
 class Compilable a where
@@ -282,7 +279,7 @@ instance Compilable SyntaxElement where
     in do
       state <- MS.get
       compiledBindings <- compileBindings varBindings 0
-      newState <- registerBindings names 0 >>= return.incDepth
+      newState <- registerBindings names 0
       MS.put newState
       compiledBody <- compileToByteCode body
       MS.put state
@@ -316,8 +313,6 @@ compileBindings [] _ = return $ Nil § []
 compileBindings (bdg : bdgs) pos =
   let (identifier, value) = bdg
   in do
-    state <- MS.get
-    MS.put $ putBinding state identifier (depth state + 1, pos)
     compiledValue <- compileToByteCode value
     compiledBindings <- compileBindings bdgs (pos + 1)
     return $ compiledBindings ++ (compiledValue ++ (Cons § []))
@@ -355,9 +350,10 @@ instance (Compilable a) => Compilable [a] where
             in let defBindings = map (\d -> (getIdentifier d, d)) defs
                in do
                  state <- MS.get
-                 compiledBindings <- compileBindings defBindings 0
                  newState <- registerBindings names 0
-                 MS.put newState
+                 MS.put $ incDepth newState
+                 compiledBindings <- compileBindings defBindings 0
+                 MS.put $ newState
                  compiledBody <- compileBody other
                  MS.put state
                  return $ Dum § compiledBindings ++
@@ -373,7 +369,7 @@ parseQzitche input = case (parse program "" input) of
 
 compileSyntax :: [SyntaxElement] -> Control
 compileSyntax code =
-  fst $ MS.runState (compileToByteCode code) $ CompilationState empty 0
+  fst $ MS.runState (compileToByteCode code) emptyState
 
 compile :: String -> Control
 compile = compileSyntax.parseQzitche
