@@ -34,15 +34,16 @@ data SyntaxElement = Identifier String |
                      NumberElement Int |
                      FuncCall SyntaxElement [SyntaxElement] |
                      LetClause [(String, SyntaxElement)] [SyntaxElement] |
-                     Condition SyntaxElement [SyntaxElement] [SyntaxElement]
+                     Condition SyntaxElement [SyntaxElement] [SyntaxElement] |
+                     AnonymousFunc [String] [SyntaxElement]
                    deriving(Show)
 
 binaryOperator :: Operator -> Control
-binaryOperator op = Ld § [ 0 :: Int, 0 :: Int] § Ld § [0 :: Int, 1 :: Int] § op § Rtn § []
+binaryOperator op = Ldf § (Ld § [ 0 :: Int, 0 :: Int] § Ld § [0 :: Int, 1 :: Int] § op § Rtn § []) § []
 
 getPrimitiveCode :: String -> Control
-getPrimitiveCode "print" = Ld § [0 :: Int, 0 :: Int] § Print § Rtn § []
-getPrimitiveCode "read" = Read § Rtn § []
+getPrimitiveCode "print" = Ldf § (Ld § [0 :: Int, 0 :: Int] § Print § Rtn § []) § []
+getPrimitiveCode "read" = Ldf § (Read § Rtn § []) § []
 
 getPrimitiveCode "+" = binaryOperator Plus
 getPrimitiveCode "-" = binaryOperator Minus
@@ -51,7 +52,7 @@ getPrimitiveCode "/" = binaryOperator Divide
 getPrimitiveCode "=" = binaryOperator Eq
 getPrimitiveCode "&&" = binaryOperator And
 getPrimitiveCode "||" = binaryOperator Or
-getPrimitiveCode "!" = Ld § [0 :: Int, 0 :: Int] § Not § Rtn § []
+getPrimitiveCode "!" = Ldf § (Ld § [0 :: Int, 0 :: Int] § Not § Rtn § []) § []
 
 getPrimitiveCode i = error $ "No binding for identifier " ++ i
 
@@ -97,6 +98,9 @@ letForm = do{ whiteSpace
             ; whiteSpace
             ; return $ LetClause varBindings body
             }
+
+funcArgsList :: Parser [String]
+funcArgsList = parens $ commaSep identifier
 
 unit :: Parser SyntaxElement
 unit = whiteSpace >>=
@@ -189,6 +193,14 @@ expr = whiteSpace >>=
                  ; return $ Condition condition ifTrue ifFalse
                  }
               <|>
+              try (do { string "fn"
+                      ; whiteSpace
+                      ; args <- funcArgsList
+                      ; body <- program
+                      ; string "end"
+                      ; return $ AnonymousFunc args body
+                      })
+              <|>
               parens expr
               <|> logicalOp)
        >>= (\v -> whiteSpace >>= (\_ -> return v))
@@ -244,7 +256,7 @@ instance Compilable SyntaxElement where
     compiledArgs <- compileArgs args
     compiledFunc <- compileToByteCode i
     return $ (Nil § compiledArgs) ++
-      (Ldf § compiledFunc § []) ++ (Ap § [])
+      compiledFunc ++ (Ap § [])
 
   compileToByteCode (NumberElement i) = return $ Ldc § i § []
   compileToByteCode (LetClause varBindings body) =
@@ -265,6 +277,14 @@ instance Compilable SyntaxElement where
     return $ compiledCondition ++ (Sel § []) ++
       ((compiledIfTrue ++ (Join § [])) §
        (compiledIfFalse ++ (Join § [])) § [])
+
+  compileToByteCode (AnonymousFunc args body) = do
+    state <- MS.get
+    newState <- registerBindings args 0
+    MS.put newState
+    compiledBody <- compileToByteCode body
+    MS.put state
+    return $ Ldf § (compiledBody ++ (Rtn § [])) § []
 
 registerBindings :: [String] -> Int -> MS.State CompilationState CompilationState
 registerBindings [] _ = MS.get >>= return.incDepth >>= return
