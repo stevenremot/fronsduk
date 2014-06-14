@@ -26,6 +26,7 @@ import qualified Data.ByteString.Lazy as BL
 import Data.Binary.Put
 import Data.Char
 import Data.Maybe
+import Data.List
 import Data.Map (Map, insertWith, findWithDefault, empty)
 import qualified Control.Monad.State as MS
 
@@ -35,7 +36,8 @@ data SyntaxElement = Identifier String |
                      FuncCall SyntaxElement [SyntaxElement] |
                      LetClause [(String, SyntaxElement)] [SyntaxElement] |
                      Condition SyntaxElement [SyntaxElement] [SyntaxElement] |
-                     AnonymousFunc [String] [SyntaxElement]
+                     AnonymousFunc [String] [SyntaxElement] |
+                     FuncDef String [String] [SyntaxElement]
                    deriving(Show)
 
 binaryOperator :: Operator -> Control
@@ -205,8 +207,22 @@ expr = whiteSpace >>=
               <|> logicalOp)
        >>= (\v -> whiteSpace >>= (\_ -> return v))
 
+topExpr :: Parser SyntaxElement
+topExpr = whiteSpace >>=
+          (\_ -> try (do { string "fn"
+                         ; whiteSpace
+                         ; name <- identifier
+                         ; whiteSpace
+                         ; args <- funcArgsList
+                         ; body <- program
+                         ; string "end"
+                         ; return $ FuncDef name args body
+                         })
+                 <|> expr)
+          >>= (\v -> whiteSpace >>= (\_ -> return v))
+
 program :: Parser [SyntaxElement]
-program = many1 expr
+program = many1 topExpr
 
 
 type Bindings = (Map String [(Int, Int)])
@@ -240,6 +256,8 @@ type CompilationUnit = MS.State CompilationState Control
 
 class Compilable a where
   compileToByteCode :: a -> CompilationUnit
+  isTopLevel :: a -> Bool
+  getIdentifier :: a -> String
 
 instance Compilable SyntaxElement where
   compileToByteCode (Identifier s) = do
@@ -264,7 +282,7 @@ instance Compilable SyntaxElement where
     in do
       state <- MS.get
       compiledBindings <- compileBindings varBindings 0
-      newState <- registerBindings names 0
+      newState <- registerBindings names 0 >>= return.incDepth
       MS.put newState
       compiledBody <- compileToByteCode body
       MS.put state
@@ -278,21 +296,22 @@ instance Compilable SyntaxElement where
       ((compiledIfTrue ++ (Join § [])) §
        (compiledIfFalse ++ (Join § [])) § [])
 
-  compileToByteCode (AnonymousFunc args body) = do
-    state <- MS.get
-    newState <- registerBindings args 0
-    MS.put newState
-    compiledBody <- compileToByteCode body
-    MS.put state
-    return $ Ldf § (compiledBody ++ (Rtn § [])) § []
+  compileToByteCode (AnonymousFunc args body) = compileFunc args body
+  compileToByteCode (FuncDef _ args body) = compileFunc args body
+
+  isTopLevel (FuncDef _ _ _) = True
+  isTopLevel _ = False
+
+  getIdentifier (FuncDef name _ _) = name
+  getIdentifier _ = error "No top-level definition"
 
 registerBindings :: [String] -> Int -> MS.State CompilationState CompilationState
-registerBindings [] _ = MS.get >>= return.incDepth >>= return
+registerBindings [] _ = MS.get >>= return
 registerBindings (ident : idents) pos = do
   state <- registerBindings idents $ pos + 1
   return $ putBinding state ident (depth state, pos)
 
-compileBindings :: [(String, SyntaxElement)] -> Int -> CompilationUnit
+compileBindings :: (Compilable a) => [(String, a)] -> Int -> CompilationUnit
 compileBindings [] _ = return $ Nil § []
 compileBindings (bdg : bdgs) pos =
   let (identifier, value) = bdg
@@ -310,12 +329,42 @@ compileArgs (arg : args) = do
   tailArgs <- compileArgs args
   return $ headArg ++ (Cons § []) ++ tailArgs
 
-instance (Compilable a) => Compilable [a] where
-  compileToByteCode [] = return []
-  compileToByteCode (e : elts) = do
+compileFunc :: [String] -> [SyntaxElement] -> CompilationUnit
+compileFunc args body = do
+    state <- MS.get
+    newState <- registerBindings args 0
+    MS.put newState
+    compiledBody <- compileToByteCode body
+    MS.put state
+    return $ Ldf § (compiledBody ++ (Rtn § [])) § []
+
+compileBody :: (Compilable a) => [a] -> CompilationUnit
+compileBody [] = return []
+compileBody (e : elts) = do
     compiledElt <- compileToByteCode e
     compiledElts <- compileToByteCode elts
     return $ compiledElt ++ compiledElts
+
+instance (Compilable a) => Compilable [a] where
+  -- compileToByteCode = compileBody
+  compileToByteCode exprs =
+    let (defs, other) = partition isTopLevel exprs
+    in if null defs
+       then compileBody other
+       else let names = map getIdentifier defs
+            in let defBindings = map (\d -> (getIdentifier d, d)) defs
+               in do
+                 state <- MS.get
+                 compiledBindings <- compileBindings defBindings 0
+                 newState <- registerBindings names 0
+                 MS.put newState
+                 compiledBody <- compileBody other
+                 MS.put state
+                 return $ Dum § compiledBindings ++
+                   (Ldf § (compiledBody ++ (Rtn § [])) § Rap § [])
+
+  isTopLevel = const False
+  getIdentifier = const ""
 
 parseQzitche :: String -> [SyntaxElement]
 parseQzitche input = case (parse program "" input) of
