@@ -11,7 +11,7 @@ You can install it as a standard cabal project.
 
 ##Usage##
 
-The project has 3 programs:
+The project has 4 programs:
 - `fronsduk`: the bytecode interpreter
 - `fronsduk-assemble`: the assembler to bytecode compiler
 - `fronsduk-disassemble`: the bytecode disassembler
