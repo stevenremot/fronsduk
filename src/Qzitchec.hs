@@ -15,7 +15,7 @@ You should have received a copy of the GNU General Public License
 along with Fronsduk.  If not, see <http://www.gnu.org/licenses/>.
 -}
 
-module Qzitche where
+module Qzitchec where
 
 import Machine
 import Bytecode
@@ -114,8 +114,8 @@ unit = whiteSpace >>=
              <|>
              try (do{ i <- identifier
                     ; if i `elem` ["in", "end", ","]
-                    ; then fail "End of expression"
-                    ; else return $ Identifier i
+                      then fail "End of expression"
+                      else return $ Identifier i
                     }))
        >>= (\v -> whiteSpace >>= (\_ -> return v))
 

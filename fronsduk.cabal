@@ -45,6 +45,8 @@ executable qzitchec
   ghc-options: -main-is Qzitchec
   build-depends:
     base == 4.6.*,
+    mtl,
+    containers,
     parsec,
     binary,
     bytestring
