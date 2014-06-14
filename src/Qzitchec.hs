@@ -33,7 +33,8 @@ data SyntaxElement = Identifier String |
                      CharString String |
                      NumberElement Int |
                      FuncCall SyntaxElement [SyntaxElement] |
-                     LetClause [(String, SyntaxElement)] [SyntaxElement]
+                     LetClause [(String, SyntaxElement)] [SyntaxElement] |
+                     Condition SyntaxElement [SyntaxElement] [SyntaxElement]
                    deriving(Show)
 
 binaryOperator :: Operator -> Control
@@ -117,7 +118,7 @@ unit = whiteSpace >>=
                    })
              <|>
              try (do{ i <- identifier
-                    ; if i `elem` ["in", "end", ","]
+                    ; if i `elem` ["in", "end", ",", "else", "then"]
                       then fail "End of expression"
                       else return $ Identifier i
                     }))
@@ -145,7 +146,7 @@ addition = whiteSpace >>=
                           ; return $ FuncCall (Identifier op) [s1, s2]
                           })
                   <|> term)
-
+       >>= (\v -> whiteSpace >>= (\_ -> return v))
 
 comparison :: Parser SyntaxElement
 comparison = whiteSpace >>=
@@ -157,9 +158,10 @@ comparison = whiteSpace >>=
                           ; return $ FuncCall (Identifier op) [s1, s2]
                           })
                   <|> addition)
+           >>= (\v -> whiteSpace >>= (\_ -> return v))
 
-expr :: Parser SyntaxElement
-expr = whiteSpace >>=
+logicalOp :: Parser SyntaxElement
+logicalOp = whiteSpace >>=
        (\_ -> do { string "!"
                  ; s <- expr
                  ; return $ FuncCall (Identifier "!") [s]
@@ -172,9 +174,23 @@ expr = whiteSpace >>=
                      ; s2 <- expr
                      ; return $ FuncCall (Identifier op) [s1, s2]
                      })
-              <|>
-              try (parens expr)
               <|> comparison)
+       >>= (\v -> whiteSpace >>= (\_ -> return v))
+
+expr :: Parser SyntaxElement
+expr = whiteSpace >>=
+       (\_ -> do { string "if"
+                 ; condition <- logicalOp
+                 ; string "then"
+                 ; ifTrue <- program
+                 ; string "else"
+                 ; ifFalse <- program
+                 ; string "end"
+                 ; return $ Condition condition ifTrue ifFalse
+                 }
+              <|>
+              parens expr
+              <|> logicalOp)
        >>= (\v -> whiteSpace >>= (\_ -> return v))
 
 program :: Parser [SyntaxElement]
@@ -241,6 +257,14 @@ instance Compilable SyntaxElement where
       compiledBody <- compileToByteCode body
       MS.put state
       return $ compiledBindings ++ (Ldf § (compiledBody ++ (Rtn § [])) § Ap § [])
+
+  compileToByteCode (Condition condition ifTrue ifFalse) = do
+    compiledCondition <- compileToByteCode condition
+    compiledIfTrue <- compileToByteCode ifTrue
+    compiledIfFalse <- compileToByteCode ifFalse
+    return $ compiledCondition ++ (Sel § []) ++
+      ((compiledIfTrue ++ (Join § [])) §
+       (compiledIfFalse ++ (Join § [])) § [])
 
 registerBindings :: [String] -> Int -> MS.State CompilationState CompilationState
 registerBindings [] _ = MS.get >>= return.incDepth >>= return
