@@ -32,8 +32,42 @@
 
 (defconst fronsduk-mode-map
   (let ((map (make-sparse-keymap)))
+    (define-key map (kbd "C-c C-b") 'fronsduk-eval-buffer)
     map)
   "Keymap for `fronsduk-mode'.")
+
+(defgroup fronsduk
+  ()
+  "Parameters for fronsduk mode."
+  :group 'languages)
+
+(defcustom fronsduk-assembler "fronsduk-assemble"
+  "Path to fronsduk assembler."
+  :group 'fronsduk)
+
+(defcustom fronsduk-vm "fronsduk"
+  "Patht o fronsduk virtual machine."
+  :group 'fronsduk)
+
+(defun fronsduk-make-fdk-file-name (file-name)
+  "Create a temporary bytecode file for FILE-NAME."
+  (concat (file-name-sans-extension file-name) "-" (format "%s" (random 1e6)) ".fdk"))
+
+(defun fronsduk-eval-buffer ()
+  "Compile and run the content of the current buffer in a virtual machine."
+  (interactive)
+  (let ((file-name (file-name-nondirectory (buffer-file-name))))
+    (when file-name
+      (let ((fdk-file-name (fronsduk-make-fdk-file-name file-name))
+            (buffer (get-buffer-create "*fronsduk-eval*")))
+        (with-current-buffer buffer (erase-buffer))
+        (async-shell-command (concat fronsduk-assembler
+                                     " <" file-name
+                                     " >" fdk-file-name
+                                     " && " fronsduk-vm " " fdk-file-name
+                                     " && rm " fdk-file-name)
+                             buffer
+                             buffer)))))
 
 (defconst fronsduk-font-lock-keywords-1
   (cons "\\<\\(?:A\\(?:nd' 'Or\\|p\\)\\|C\\(?:ar\\|dr\\|ons\\)\\|D\\(?:ivide\\|um\\)\\|Eq\\|Join\\|Ld[cf]?\\|Minus\\|N\\(?:il\\|ot\\)\\|P\\(?:lus\\|rint\\)\\|R\\(?:ap\\|ead\\|tn\\)\\|Sel\\|Times\\)\\>"
