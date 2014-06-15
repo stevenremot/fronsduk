@@ -51,8 +51,10 @@ To see what qzitche looks like, see the examples in the `qzitche` directory.
 
 ###Emacs support###
 
-Major modes for editing assembler and qzitche programs can be found in the
-directory `extra/emacs`. They just implement syntax coloration.
+Major modes for editing assembler and qzitche programs can be found in
+the directory `extra/emacs`. They implement syntax coloration, and
+buffer evaluation with the shortcut `C-c C-b`. You can also see the
+assembler output in qzitche-mode using `C-c C-d`.
 
 ###License###
 
