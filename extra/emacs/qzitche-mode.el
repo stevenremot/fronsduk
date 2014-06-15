@@ -43,7 +43,7 @@
   "Regexp for qzitche keywords.")
 
 (defconst qzitche-builtin-funcs-regexp
-  (regexp-opt '("print" "read" "head" "tail") 'words)
+  (regexp-opt '("print" "read" "head" "tail" "cons") 'words)
   "Regexp for zitche built-in functions.")
 
 (defconst qzitche-font-lock-keywords
