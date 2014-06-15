@@ -7,7 +7,7 @@ Ldf (Ld (0 0) Sel
       Ldc 1
       Ld (0 0) Minus
       Cons
-      Ld (1 0) Ap Not
+      Ld (1 0) Ap
       Join)
      (Ldc 1
       Join)
@@ -20,7 +20,7 @@ Ldf (Ld (0 0) Sel
       Ldc 1
       Ld (0 0) Minus
       Cons
-      Ld (1 1) Ap Not
+      Ld (1 1) Ap
       Join)
      (Ldc 0
       Join)
