@@ -26,7 +26,7 @@ data Operator = Ld | Ldc | Ldf |
                 Cons | Car | Cdr |
                 Sel | Join |
                 Plus | Minus | Times | Divide |
-                Eq | And | Or | Not |
+                Eq | And | Or | Not | Cmp |
                 Print | Read
               deriving (Show, Eq)
 
@@ -171,6 +171,7 @@ applyOperator Times r = applyNumBinOperator (*) r
 applyOperator Divide r = applyNumBinOperator quot r
 
 applyOperator Eq r = applyNumBinOperator (\a b ->  if (a == b) then 1 else 0) r
+applyOperator Cmp r = applyNumBinOperator (\a b -> if (a > b) then 1 else 0) r
 applyOperator And (Registers (v1 : v2 : s) e c d) =
   return  $ Registers ((if isTrue v1 && isTrue v2 then 1 :: Int else 0 :: Int) § s) e c d
 applyOperator Or (Registers (v1 : v2 : s) e c d) =

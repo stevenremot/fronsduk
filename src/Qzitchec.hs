@@ -53,6 +53,18 @@ getPrimitiveCode "-" = binaryOperator Minus
 getPrimitiveCode "*" = binaryOperator Times
 getPrimitiveCode "/" = binaryOperator Divide
 getPrimitiveCode "=" = binaryOperator Eq
+getPrimitiveCode ">" = binaryOperator Cmp
+getPrimitiveCode "<" =
+  Ldf § (
+    Ld § [0 :: Int, 1 :: Int] § Ld § [0 :: Int, 0 :: Int] § Cmp §
+    Ld § [0 :: Int, 1 :: Int] § Ld § [0 :: Int, 0 :: Int] § Eq §
+    Or § Not § Rtn § []) § []
+getPrimitiveCode ">=" =
+  Ldf § (
+    Ld § [0 :: Int, 1 :: Int] § Ld § [0 :: Int, 0 :: Int] § Cmp §
+    Ld § [0 :: Int, 1 :: Int] § Ld § [0 :: Int, 0 :: Int] § Eq §
+    Or § Rtn § []) § []
+getPrimitiveCode "<=" = Ldf § (Ld § [ 0 :: Int, 1 :: Int] § Ld § [0 :: Int, 0 :: Int] § Cmp § Not § Rtn § []) § []
 getPrimitiveCode "&&" = binaryOperator And
 getPrimitiveCode "||" = binaryOperator Or
 getPrimitiveCode "!" = Ldf § (Ld § [0 :: Int, 0 :: Int] § Not § Rtn § []) § []
@@ -163,7 +175,9 @@ comparison :: Parser SyntaxElement
 comparison = whiteSpace >>=
            (\_ -> try (do { s1 <- addition
                           ; whiteSpace
-                          ; op <- string "="
+                          ; op <- string "=" <|>
+                                  try (string ">=") <|> string ">" <|>
+                                  try (string "<=") <|> string "<"
                           ; whiteSpace
                           ; s2 <- comparison
                           ; return $ FuncCall (Identifier op) [s1, s2]

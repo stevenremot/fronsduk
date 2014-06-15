@@ -44,11 +44,12 @@ opCodes =
    (Times, 16),
    (Divide, 17),
    (Eq, 18),
-   (And, 19),
-   (Or, 20),
-   (Not, 21),
-   (Print, 22),
-   (Read, 23)]
+   (Cmp, 19),
+   (And, 20),
+   (Or, 21),
+   (Not, 22),
+   (Print, 23),
+   (Read, 24)]
 
 getOpCode :: Operator -> Integer
 getOpCode = fromJust . (flip lookup opCodes)

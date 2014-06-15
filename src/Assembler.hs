@@ -59,6 +59,7 @@ getOperator "Minus" = Minus
 getOperator "Times" = Times
 getOperator "Divide" = Divide
 getOperator "Eq" = Eq
+getOperator "Cmp" = Cmp
 getOperator "And" = And
 getOperator "Or" = Or
 getOperator "Not" = Not
