@@ -205,7 +205,7 @@ logicalOp = whiteSpace >>=
 expr :: Parser SyntaxElement
 expr = whiteSpace >>=
        (\_ -> try (do { string "if"
-                      ; condition <- logicalOp
+                      ; condition <- expr
                       ; string "then"
                       ; ifTrue <- program
                       ; string "else"
