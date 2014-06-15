@@ -1,6 +1,6 @@
 ;;; fronsduk-mode.el --- Major mode for editing fronsduk assembler files
 
-;;; Version: 0.2
+;;; Version: 0.3
 
 ;;; License:
 
@@ -69,9 +69,21 @@
                              buffer
                              buffer)))))
 
-(defconst fronsduk-font-lock-keywords-1
-  (cons "\\<\\(?:A\\(?:nd' 'Or\\|p\\)\\|C\\(?:ar\\|dr\\|ons\\)\\|D\\(?:ivide\\|um\\)\\|Eq\\|Join\\|Ld[cf]?\\|Minus\\|N\\(?:il\\|ot\\)\\|P\\(?:lus\\|rint\\)\\|R\\(?:ap\\|ead\\|tn\\)\\|Sel\\|Times\\)\\>"
-        '(0 font-lock-builtin-face))
+(defconst fronsduk-keywords-regexp
+  (regexp-opt '("And" "Or"
+                "Car" "Cdr" "Cons"
+                "Plus" "Minus" "Times" "Divide"
+                "Nil" "Dum"
+                "Eq" "Not" "Cmp"
+                "Ldc" "Ldf" "Ld"
+                "Print" "Read"
+                "Rap" "Ap" "Rtn"
+                "Sel" "Join")
+              'words)
+  "Regexp for fronsduk assembler keywords.")
+
+(defconst fronsduk-font-lock-keywords
+  `((,fronsduk-keywords-regexp . font-lock-keyword-face))
   "Keywords defined in fronsduk assembler.")
 
 ;;;###autoload
@@ -80,12 +92,7 @@
 
 \\{fronsduk-mode-map}"
   (set (make-local-variable 'indent-line-function) 'indent-relative)
-  (set (make-local-variable 'font-lock-defaults)
-       '((fronsduk-font-lock-keywords-1)
-         nil
-         nil
-         nil
-         nil)))
+  (set (make-local-variable 'font-lock-defaults) '(fronsduk-font-lock-keywords)))
 
 (provide 'fronsduk-mode)
 
