@@ -1,6 +1,6 @@
 ;;; qzitche-mode.el --- Major mode for editing qzitche programs
 
-;;; Version: 0.1
+;;; Version: 0.2
 
 ;;; License:
 

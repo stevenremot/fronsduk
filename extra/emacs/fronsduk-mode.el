@@ -1,6 +1,6 @@
 ;;; fronsduk-mode.el --- Major mode for editing fronsduk assembler files
 
-;;; Version: 0.1
+;;; Version: 0.2
 
 ;;; License:
 
