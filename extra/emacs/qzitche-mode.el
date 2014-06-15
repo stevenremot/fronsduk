@@ -1,6 +1,6 @@
 ;;; qzitche-mode.el --- Major mode for editing qzitche programs
 
-;;; Version: 0.2
+;;; Version: 0.3
 
 ;;; License:
 
@@ -43,7 +43,7 @@
   "Regexp for qzitche keywords.")
 
 (defconst qzitche-builtin-funcs-regexp
-  (regexp-opt '("print" "read") 'words)
+  (regexp-opt '("print" "read" "head" "tail") 'words)
   "Regexp for zitche built-in functions.")
 
 (defconst qzitche-font-lock-keywords
