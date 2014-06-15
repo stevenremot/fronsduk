@@ -33,6 +33,7 @@
 
 (defconst qzitche-mode-map
   (let ((map (make-sparse-keymap)))
+    (define-key map (kbd "C-c C-b") 'qzitche-eval-buffer)
     map)
   "Keymap for `qzitche-mode'.")
 
@@ -48,6 +49,39 @@
   `((,qzitche-keywords-regexp . font-lock-keyword-face)
     (,qzitche-builtin-funcs-regexp . font-lock-function-name-face))
   "Qzitche keywords.")
+
+(defgroup qzitche
+  ()
+  "Parameters for qzitche mode."
+  :group 'languages)
+
+(defcustom qzitche-fronsduk-vm "fronsduk"
+  "Path to fronsduk virtual machine."
+  :group 'qzitche)
+
+(defcustom qzitche-compiler "qzitchec"
+  "Path to qzitche compiler."
+  :group 'qzitche)
+
+(defun qzitche-make-fdk-file-name (file-name)
+  "Create a temporary bytecode file for FILE-NAME."
+  (concat (file-name-sans-extension file-name) "-" (format "%s" (random 1e6)) ".fdk"))
+
+(defun qzitche-eval-buffer ()
+  "COmpile and run the content of the current buffer in a virtual machine."
+  (interactive)
+  (let ((file-name (file-name-nondirectory (buffer-file-name))))
+    (when file-name
+      (let ((fdk-file-name (qzitche-make-fdk-file-name file-name))
+            (buffer (get-buffer-create "*qzitche-eval*")))
+        (with-current-buffer buffer (erase-buffer))
+        (async-shell-command (concat qzitche-compiler
+                                     " <" file-name
+                                     " >" fdk-file-name
+                                     " && " qzitche-fronsduk-vm " " fdk-file-name
+                                     " && rm " fdk-file-name)
+                             buffer
+                             buffer)))))
 
 ;;;###autoload
 (define-derived-mode qzitche-mode text-mode "qzitche"
