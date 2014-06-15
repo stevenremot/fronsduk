@@ -303,8 +303,9 @@ instance Compilable SyntaxElement where
     in do
       state <- MS.get
       compiledBindings <- compileBindings varBindings 0
+      MS.put $ incDepth state
       newState <- registerBindings names 0
-      MS.put newState
+      MS.put $ newState
       compiledBody <- compileToByteCode body
       MS.put state
       return $ compiledBindings ++ (Ldf § (compiledBody ++ (Rtn § [])) § Ap § [])
