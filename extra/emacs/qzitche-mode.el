@@ -34,6 +34,7 @@
 (defconst qzitche-mode-map
   (let ((map (make-sparse-keymap)))
     (define-key map (kbd "C-c C-b") 'qzitche-eval-buffer)
+    (define-key map (kbd "C-c C-d") 'qzitche-disassemble-buffer)
     map)
   "Keymap for `qzitche-mode'.")
 
@@ -63,6 +64,10 @@
   "Path to qzitche compiler."
   :group 'qzitche)
 
+(defcustom qzitche-disassembler "fronsduk-disassemble"
+  "Path to bytecode disassembler."
+  :group 'qzitche)
+
 (defun qzitche-make-fdk-file-name (file-name)
   "Create a temporary bytecode file for FILE-NAME."
   (concat (file-name-sans-extension file-name) "-" (format "%s" (random 1e6)) ".fdk"))
@@ -82,6 +87,27 @@
                                      " && rm " fdk-file-name)
                              buffer
                              buffer)))))
+
+(defun qzitche-disassemble-buffer ()
+  "Convert the content of the current buffer to assembler."
+  (interactive)
+  (let ((file-name (file-name-nondirectory (buffer-file-name))))
+    (when file-name
+      (let ((fdk-file-name (qzitche-make-fdk-file-name file-name))
+            (buffer (get-buffer-create "*qzitche-asm*")))
+        (with-current-buffer buffer
+          (erase-buffer)
+          (shell-command (concat qzitche-compiler
+                                 " <" file-name
+                                 " >" fdk-file-name
+                                 " && " qzitche-disassembler " <" fdk-file-name
+                                 " && rm " fdk-file-name)
+                         buffer
+                         buffer)
+          (display-buffer buffer 'display-buffer-pop-up-window)
+          (when (fboundp 'fronsduk-mode)
+            (fronsduk-mode)))
+        ))))
 
 ;;;###autoload
 (define-derived-mode qzitche-mode text-mode "qzitche"
