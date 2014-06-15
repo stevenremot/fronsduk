@@ -37,7 +37,8 @@ data SyntaxElement = Identifier String |
                      LetClause [(String, SyntaxElement)] [SyntaxElement] |
                      Condition SyntaxElement [SyntaxElement] [SyntaxElement] |
                      AnonymousFunc [String] [SyntaxElement] |
-                     FuncDef String [String] [SyntaxElement]
+                     FuncDef String [String] [SyntaxElement] |
+                     ListElement [SyntaxElement]
                    deriving(Show)
 
 binaryOperator :: Operator -> Control
@@ -56,6 +57,9 @@ getPrimitiveCode "&&" = binaryOperator And
 getPrimitiveCode "||" = binaryOperator Or
 getPrimitiveCode "!" = Ldf § (Ld § [0 :: Int, 0 :: Int] § Not § Rtn § []) § []
 
+getPrimitiveCode "head" = Ldf § (Ld § [0 :: Int, 0 :: Int] § Car § Rtn § []) § []
+getPrimitiveCode "tail" = Ldf § (Ld § [0 :: Int, 0 :: Int] § Cdr § Rtn § []) § []
+
 getPrimitiveCode i = error $ "No binding for identifier " ++ i
 
 lexer :: P.TokenParser ()
@@ -72,6 +76,7 @@ parens = P.parens lexer
 commaSep = P.commaSep lexer
 commaSep1 = P.commaSep1 lexer
 natural = P.natural lexer
+squares = P.squares lexer
 
 funcArgs :: Parser [SyntaxElement]
 funcArgs = commaSep expr
@@ -203,6 +208,10 @@ expr = whiteSpace >>=
                       ; return $ AnonymousFunc args body
                       })
               <|>
+              do { elts <- squares $ commaSep expr
+                 ; return $ ListElement elts
+                 }
+              <|>
               parens expr
               <|> logicalOp)
        >>= (\v -> whiteSpace >>= (\_ -> return v))
@@ -295,6 +304,12 @@ instance Compilable SyntaxElement where
 
   compileToByteCode (AnonymousFunc args body) = compileFunc args body
   compileToByteCode (FuncDef _ args body) = compileFunc args body
+
+  compileToByteCode (ListElement []) = return $ Nil § []
+  compileToByteCode (ListElement (elt : elts)) = do
+    compiledElt <- compileToByteCode elt
+    compiledElts <- compileToByteCode $ ListElement elts
+    return $ compiledElts ++ (compiledElt ++ (Cons § []))
 
   isTopLevel (FuncDef _ _ _) = True
   isTopLevel _ = False
