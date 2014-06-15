@@ -1,0 +1,71 @@
+fn map(f, l)
+   if l
+   then let h := head(l), t := tail(l)
+        in cons(f(h), map(f, t))
+        end
+   else []
+   end
+end
+
+fn reduce(f, o, l)
+   if l
+   then let h := head(l), t := tail(l)
+        in reduce(f, f(o, h), t)
+        end
+   else o
+   end
+end
+
+fn sum(l) reduce(fn(a, b) a + b end, 0, l) end
+
+fn nth(l, n)
+   if l
+   then if n = 0
+        then head(l)
+        else nth(tail(l), n - 1)
+        end
+   else []
+   end
+end
+
+fn size (l)
+   if l
+   then 1 + size(tail(l))
+   else 0
+   end
+end
+
+fn _reverse(l, n)
+   if n = 0
+   then [head(l)]
+   else cons(nth(l, n), _reverse(l, n - 1))
+   end
+end
+
+fn reverse(l)
+   if size(l) <= 1
+   then l
+   else _reverse(l, size(l) - 1)
+   end
+end
+
+fn filter(p, l)
+   if l
+   then let h := head(l), t := tail(l)
+        in let ft := filter(p, t)
+           in if p(h)
+              then cons(h, ft)
+              else ft
+              end
+           end
+        end
+   else []
+   end
+end
+
+; map(fn(e) e + 1 end, [1, 2, 3])
+; sum([1, 2, 3])
+; nth([1, 2, 3], 1)
+; size([1, 2, 3, 4])
+; reverse([1, 2, 3])
+; filter(fn(elt) elt < 5 end, [1, 5, 3, 2, 6, 9])
