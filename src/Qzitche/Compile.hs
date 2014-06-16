@@ -95,14 +95,9 @@ instance Compilable SyntaxElement where
   compileToByteCode (LetClause varBindings body) =
     let names = map fst varBindings
     in do
-      state <- MS.get
       compiledBindings <- compileBindings varBindings 0
-      MS.put $ incDepth state
-      newState <- registerBindings names 0
-      MS.put $ newState
-      compiledBody <- compileToByteCode body
-      MS.put state
-      return $ compiledBindings ++ (Ldf § (compiledBody ++ (Rtn § [])) § Ap § [])
+      compiledBody <- compileFunc names body
+      return $ compiledBindings ++ compiledBody ++ (Ap § [])
 
   compileToByteCode (Condition condition ifTrue ifFalse) = do
     compiledCondition <- compileToByteCode condition
