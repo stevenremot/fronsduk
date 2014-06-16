@@ -127,21 +127,25 @@ comparison = whiteSpace >>=
                   <|> addition)
            >>= (\v -> whiteSpace >>= (\_ -> return v))
 
+notOp :: Parser SyntaxElement
+notOp = whiteSpace >>=
+        (\_ -> do { string "!"
+                  ; s <- comparison <|> parens expr
+                  ; return $ FuncCall (Identifier "!") [s]
+                  }
+               <|> comparison)
+        >>= (\v -> whiteSpace >>= (\_ -> return v))
+
 logicalOp :: Parser SyntaxElement
 logicalOp = whiteSpace >>=
-       (\_ -> do { string "!"
-                 ; s <- expr
-                 ; return $ FuncCall (Identifier "!") [s]
-                 }
-              <|>
-              try (do { s1 <- comparison
+       (\_ -> try (do { s1 <- notOp
                      ; whiteSpace
                      ; op <- string "&&" <|> string "||"
                      ; whiteSpace
                      ; s2 <- expr
                      ; return $ FuncCall (Identifier op) [s1, s2]
                      })
-              <|> comparison)
+              <|> notOp)
        >>= (\v -> whiteSpace >>= (\_ -> return v))
 
 expr :: Parser SyntaxElement
