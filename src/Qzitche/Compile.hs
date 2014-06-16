@@ -159,16 +159,19 @@ instance (Compilable a) => Compilable [a] where
     in if null defs
        then compileBody other
        else let names = map getIdentifier defs
-            in let defBindings = map (\d -> (getIdentifier d, d)) defs
-               in do
-                 state <- MS.get
-                 newState <- registerBindings names 0
-                 MS.put newState
-                 compiledBindings <- compileArgs defs
-                 compiledBody <- compileBody other
-                 MS.put state
-                 return $ Dum § compiledBindings ++
-                   (Ldf § (compiledBody ++ (Rtn § [])) § Rap § [])
+            in do
+              state <- MS.get
+              MS.put $ incDepth $ incDepth state
+              newStateInFunction <- registerBindings names 0
+              MS.put $ newStateInFunction
+              compiledBindings <- compileArgs defs
+              MS.put $ incDepth state
+              newStateInBody <- registerBindings names 0
+              MS.put newStateInBody
+              compiledBody <- compileBody other
+              MS.put state
+              return $ Dum § compiledBindings ++
+                (Ldf § (compiledBody ++ (Rtn § [])) § Rap § [])
 
   isTopLevel = const False
   getIdentifier = const ""
