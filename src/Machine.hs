@@ -18,6 +18,7 @@ along with Fronsduk.  If not, see <http://www.gnu.org/licenses/>.
 module Machine where
 
 import Data.Char
+import System.IO
 
 -- Machine base operators
 data Operator = Ld | Ldc | Ldf |
@@ -184,6 +185,7 @@ applyOperator Not (Registers (v : s) e c d) =
 
 applyOperator Print (Registers ((ListValue v) : s) e c d) = do
   putStr $ map (\(NumberValue i) -> chr i) v
+  hFlush stdout
   return $ Registers (ListValue v : s) e c d
 
 applyOperator Read (Registers s e c d) = do
