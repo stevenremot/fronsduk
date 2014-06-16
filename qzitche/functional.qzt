@@ -50,17 +50,18 @@ fn reverse(l)
 end
 
 fn filter(p, l)
-   if l
-   then let h := head(l), t := tail(l)
-        in let ft := filter(p, t)
-           in if p(h)
-              then cons(h, ft)
-              else ft
-              end
+   reverse(
+    reduce(
+        fn (res, elt)
+           if p(elt)
+           then cons(elt, res)
+           else res
            end
-        end
-   else []
-   end
+        end,
+        [],
+        l
+    )
+   )
 end
 
 ; map(fn(e) e + 1 end, [1, 2, 3])
