@@ -163,9 +163,8 @@ instance (Compilable a) => Compilable [a] where
               state <- MS.get
               MS.put $ incDepth state
               newState <- registerBindings names 0
-              MS.put $ newState
-              compiledBindings <- compileArgs defs
               MS.put newState
+              compiledBindings <- compileArgs defs
               compiledBody <- compileBody other
               MS.put state
               return $ Dum § compiledBindings ++
