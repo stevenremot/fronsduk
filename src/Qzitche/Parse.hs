@@ -73,10 +73,6 @@ unit = whiteSpace >>=
                ; return $ NumberElement $ fromInteger i
                }
              <|>
-             try (do{ l <- letForm
-                    ; return l
-                    })
-             <|>
              try (do{ i <- identifier
                    ; args <- parens funcArgs
                    ; return $ FuncCall (Identifier i) args
@@ -171,6 +167,10 @@ expr = whiteSpace >>=
               do { elts <- squares $ commaSep expr
                  ; return $ ListElement elts
                  }
+              <|>
+              try (do{ l <- letForm
+                     ; return l
+                     })
               <|>
               parens expr
               <|> logicalOp)
