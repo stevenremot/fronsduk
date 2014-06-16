@@ -94,10 +94,11 @@ instance Compilable SyntaxElement where
   compileToByteCode (NumberElement i) = return $ Ldc § i § []
   compileToByteCode (LetClause varBindings body) =
     let names = map fst varBindings
-    in do
-      compiledBindings <- compileBindings varBindings 0
-      compiledBody <- compileFunc names body
-      return $ compiledBindings ++ compiledBody ++ (Ap § [])
+    in let values = map snd varBindings
+       in do
+         compiledBindings <- compileArgs values
+         compiledBody <- compileFunc names body
+         return $ compiledBindings ++ compiledBody ++ (Ap § [])
 
   compileToByteCode (Condition condition ifTrue ifFalse) = do
     compiledCondition <- compileToByteCode condition
@@ -128,16 +129,7 @@ registerBindings (ident : idents) pos = do
   state <- registerBindings idents $ pos + 1
   return $ putBinding state ident (depth state, pos)
 
-compileBindings :: (Compilable a) => [(String, a)] -> Int -> CompilationUnit
-compileBindings [] _ = return $ Nil § []
-compileBindings (bdg : bdgs) pos =
-  let (identifier, value) = bdg
-  in do
-    compiledValue <- compileToByteCode value
-    compiledBindings <- compileBindings bdgs (pos + 1)
-    return $ compiledBindings ++ (compiledValue ++ (Cons § []))
-
-compileArgs :: [SyntaxElement] -> CompilationUnit
+compileArgs :: (Compilable a) => [a] -> CompilationUnit
 compileArgs [] = return $ Nil § []
 compileArgs (arg : args) = do
   headArg <- compileToByteCode arg
@@ -162,7 +154,6 @@ compileBody (e : elts) = do
     return $ compiledElt ++ compiledElts
 
 instance (Compilable a) => Compilable [a] where
-  -- compileToByteCode = compileBody
   compileToByteCode exprs =
     let (defs, other) = partition isTopLevel exprs
     in if null defs
@@ -173,7 +164,7 @@ instance (Compilable a) => Compilable [a] where
                  state <- MS.get
                  newState <- registerBindings names 0
                  MS.put newState
-                 compiledBindings <- compileBindings defBindings 0
+                 compiledBindings <- compileArgs defs
                  compiledBody <- compileBody other
                  MS.put state
                  return $ Dum § compiledBindings ++
