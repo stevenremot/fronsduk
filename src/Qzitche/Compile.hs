@@ -161,13 +161,11 @@ instance (Compilable a) => Compilable [a] where
        else let names = map getIdentifier defs
             in do
               state <- MS.get
-              MS.put $ incDepth $ incDepth state
-              newStateInFunction <- registerBindings names 0
-              MS.put $ newStateInFunction
-              compiledBindings <- compileArgs defs
               MS.put $ incDepth state
-              newStateInBody <- registerBindings names 0
-              MS.put newStateInBody
+              newState <- registerBindings names 0
+              MS.put $ newState
+              compiledBindings <- compileArgs defs
+              MS.put newState
               compiledBody <- compileBody other
               MS.put state
               return $ Dum § compiledBindings ++
