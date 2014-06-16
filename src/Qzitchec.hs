@@ -357,12 +357,13 @@ compileArgs (arg : args) = do
 
 compileFunc :: [String] -> [SyntaxElement] -> CompilationUnit
 compileFunc args body = do
-    state <- MS.get
-    newState <- registerBindings args 0
-    MS.put newState
-    compiledBody <- compileToByteCode body
-    MS.put state
-    return $ Ldf § (compiledBody ++ (Rtn § [])) § []
+  state <- MS.get
+  MS.put $ incDepth state
+  newState <- registerBindings args 0
+  MS.put newState
+  compiledBody <- compileToByteCode body
+  MS.put state
+  return $ Ldf § (compiledBody ++ (Rtn § [])) § []
 
 compileBody :: (Compilable a) => [a] -> CompilationUnit
 compileBody [] = return []
@@ -382,9 +383,8 @@ instance (Compilable a) => Compilable [a] where
                in do
                  state <- MS.get
                  newState <- registerBindings names 0
-                 MS.put $ incDepth newState
+                 MS.put newState
                  compiledBindings <- compileBindings defBindings 0
-                 MS.put $ newState
                  compiledBody <- compileBody other
                  MS.put state
                  return $ Dum § compiledBindings ++
