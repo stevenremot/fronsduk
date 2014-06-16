@@ -126,7 +126,10 @@ applyOperator Ld (Registers
                   e
                   ((ListValue ((NumberValue i) : (NumberValue j) : [])) : c)
                   d) =
-  return $ Registers ((e !! i) !! j : s) e c d
+  if length e > i && (length $ e !! i) > j
+  then return $ Registers ((e !! i) !! j : s) e c d
+  else fail $ "Error when Ld at " ++ show i ++ ", " ++ show j ++ ".\n"
+       ++ "Environment: " ++ show e ++ "\nControl: " ++ show c
 
 applyOperator Ldc (Registers s e (v : c) d) =
   return $ Registers (v : s) e c d
