@@ -1,0 +1,110 @@
+fn nth(l, n)
+   if l
+   then if n = 0
+        then head(l)
+        else nth(tail(l), n - 1)
+        end
+   else []
+   end
+end
+
+fn size (l)
+   if l
+   then 1 + size(tail(l))
+   else 0
+   end
+end
+
+fn _reverse(l, n)
+   if n = 0
+   then [head(l)]
+   else cons(nth(l, n), _reverse(l, n - 1))
+   end
+end
+
+fn reverse(l)
+   if size(l) <= 1
+   then l
+   else _reverse(l, size(l) - 1)
+   end
+end
+
+fn filter(p, l)
+   if l
+   then let h := head(l), t := filter(p, tail(l))
+        in if p(h)
+           then cons(h, t)
+           else t
+           end
+        end
+   else []
+   end
+end
+
+fn promptString()
+   fn readString(currentString)
+      let c := read()
+      in if c = 10
+         then reverse(currentString)
+         else readString(cons(c, currentString))
+         end
+      end
+   end
+
+   print("> ")
+   readString("")
+end
+
+fn isNumber(s)
+   if s
+   then let h := head(s) - 48, t := tail(s)
+        in h >= 0 && h <= 9 && (!t || isNumber(t))
+        end
+   else 0
+   end
+end
+
+fn parseNumber(s)
+   fn parseNumberPart(currentNumber, s)
+      if s
+      then parseNumberPart(currentNumber * 10 + head(s) - 48, tail(s))
+      else currentNumber
+      end
+   end
+
+   parseNumberPart(0, s)
+end
+
+fn promptNumberList()
+   let s := promptString()
+   in if isNumber(s)
+      then cons(parseNumber(s), promptNumberList())
+      else []
+      end
+   end
+end
+
+fn concat(l1, l2)
+   fn concatRev(l1, l2)
+      if l1
+      then concatRev(tail(l1), cons(head(l1), l2))
+      else l2
+      end
+   end
+
+   concatRev(reverse(l1), l2)
+end
+
+fn quickSort(l)
+   if l
+   then let h := head(l), t := tail(l)
+        in let lesser := filter(fn (e) e <= h end, t),
+               greater := filter(fn (e) e > h end, t)
+           in concat(quickSort(lesser), cons(h, quickSort(greater)))
+           end
+        end
+   else []
+   end
+end
+
+quickSort(promptNumberList())
