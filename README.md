@@ -56,6 +56,9 @@ the directory `extra/emacs`. They implement syntax coloration, and
 buffer evaluation with the shortcut `C-c C-b`. You can also see the
 assembler output in qzitche-mode using `C-c C-d`.
 
+There is also a basic flycheck syntax checker for qzitche. It returns errors
+from `qzitchec`.
+
 ###License###
 
 This project is released under the GPL v3 license. See `LICENSE` for more details.
