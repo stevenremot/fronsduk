@@ -193,7 +193,13 @@ topExpr = whiteSpace >>=
 program :: Parser [SyntaxElement]
 program = many1 topExpr
 
+sanitizeError :: ParseError -> String
+sanitizeError err =
+  map repl $ show err
+  where repl '\n' = ' '
+        repl x = x
+
 parseQzitche :: String -> [SyntaxElement]
 parseQzitche input = case (parse program "" input) of
-                           Left err -> error $ "Parsing failed : " ++ show err
+                           Left err -> error $ "Parsing failed : " ++ sanitizeError err
                            Right x -> x

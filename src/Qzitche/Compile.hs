@@ -40,7 +40,7 @@ getPrimitiveCode "head" = Ldf § (Ld § [0 :: Int, 0 :: Int] § Car § Rtn § []
 getPrimitiveCode "tail" = Ldf § (Ld § [0 :: Int, 0 :: Int] § Cdr § Rtn § []) § []
 getPrimitiveCode "cons" = Ldf § (Ld § [0 :: Int, 1 :: Int] § Ld § [0 :: Int, 0 :: Int] § Cons § Rtn § []) § []
 
-getPrimitiveCode i = error $ "No binding for identifier " ++ i
+getPrimitiveCode i = error $ "(line 1, column 1): No binding for identifier " ++ i
 
 type Bindings = (Map String [(Int, Int)])
 

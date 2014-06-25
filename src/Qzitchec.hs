@@ -23,11 +23,23 @@ import Qzitche.Parse
 import Qzitche.Compile
 import qualified Data.ByteString.Lazy as BL
 import Data.Binary.Put
+import System.Environment
+import System.IO
 
 compile :: String -> Control
 compile = compileSyntax.parseQzitche
 
+compileInput :: Handle -> IO ()
+compileInput handle = do
+  input <- hGetContents handle
+  BL.putStr $ runPut $ serializeControl $ compile input
+
+
 main :: IO ()
 main = do
-  input <- getContents
-  BL.putStr $ runPut $ serializeControl $ compile input
+  args <- getArgs
+  if null args
+    then compileInput stdin
+    else do
+    handle <- openFile (head args) ReadMode
+    compileInput handle
